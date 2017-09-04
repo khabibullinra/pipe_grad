@@ -586,7 +586,7 @@ class grad_Xiao:
     
     def calc_c_o(self,v_s_g, v_s_l):         #Коэффициент, учитывающий насколько максимальная скорость больше средней для фронта Slug, согласно  Fabre(1994).27961-MS.Advancements in Two-Phase Slug Flow Modeling 
         Re_mix_slug_crit = 1000
-        Re_mix_slug = self.calc_Re_mix_slug(self,v_s_g, v_s_l, self.rho_l_PT, self.mu_l_PT, self.d_pipe)
+        Re_mix_slug = self.calc_Re_mix_slug(v_s_g, v_s_l, self.rho_l_PT, self.mu_l_PT, self.d_pipe)
         return 2.27/(1+(Re_mix_slug/Re_mix_slug_crit)**2)+1.2/(1+(Re_mix_slug_crit/Re_mix_slug)**2)
     
     def calc_v_d_TB(self,v_s_g, v_s_l):      #Taylor Bubble Drift Velocity
@@ -715,7 +715,7 @@ class grad_Xiao:
         v_L_T_B = self.calc_v_L_T_B(v_s_g, v_s_l)
         return f_factor_i*self.rho_g_PT*(v_g_T_B - v_L_T_B)*math.fabs(v_g_T_B - v_L_T_B)/8
 
-    def combined_momentum_eq_film_reg(self,v_s_g, v_s_l,h_f_d):       #Combined momentum equation in film region
+    def combined_momentum_eq_film_reg(self,v_s_g, v_s_l):       #Combined momentum equation in film region
         self.h_f_d = 0.001
         res = 0
         while (res<0):
@@ -1106,6 +1106,8 @@ grX = grad_Xiao()
 dP = 0.4
 print (grX.calc_L_S(dP))
 print (grX.calc_L_S_max(dP))
+a = grX.combined_momentum_eq_film_reg(1,1)
+b= grX.calc_regime_liquid_holdup(1,1,0.6)
 print (grX.calc_L_U(2, 10, dP))
 print (grX.pressure_drop(1, 1, 0.4))
 
