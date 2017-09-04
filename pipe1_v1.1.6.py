@@ -253,7 +253,7 @@ class grad_Xiao:
      
     def calc_k_large(self):
         N_Re_l=self.calc_N_Re_l(self.rho_l_PT,self.v_s_l,self.d_pipe,self.mu_l_PT)
-        f_large=self.calc_f_large(self.gravity,self.angle,self.d_pipe,self.rho_l_PT,self.rho_g_PT,self.v_s_l)
+        f_large=self.calc_f_large(self.gravity,self.angle,self.d_pipe,self.rho_l_PT,self.rho_g_PT,self.v_s_l,self.v_s_g)
         return N_Re_l**0.5*f_large
      
     def calc_t_large(self):
@@ -265,7 +265,7 @@ class grad_Xiao:
         dim_v_g=self.calc_dim_v_g(dim_h_l)
         dim_S_i=self.calc_dim_S_i(dim_h_l)
         dim_A_g=self.calc_dim_A_g(dim_h_l)
-        f_large=self.calc_f_large(self.gravity,self.angle,self.d_pipe,self.rho_l_PT,self.rho_g_PT,self.v_s_l)
+        f_large=self.calc_f_large(self.gravity,self.angle,self.d_pipe,self.rho_l_PT,self.rho_g_PT,self.v_s_l,self.v_s_g)
         return f_large**2*(1/(1-dim_h_l)**2*(dim_v_g**2*dim_S_i/dim_A_g))
      
     def calc_trans_B(self,dim_h_l):        #Intermittent or Dispersed_bubble to Annular Transition criterea (если критерий меньше либо равен 0,35, то Annular)
@@ -300,7 +300,7 @@ class grad_Xiao:
        
     def calc_bubble_slug_regime(self,dim_h_l):  #check dispersed-bubble or intermittent(i.e. slug or plug)
                                     #1-Annular; 2-Stratified-Wavy; 3-Stratified-Smooth; 4-Dispersed-Bubble; 5-Intermittent
-        trans_D=self.calc_trans_D(self,dim_h_l)
+        trans_D=self.calc_trans_D(dim_h_l)
         if trans_D<0:
             return 5
         else:
@@ -691,12 +691,12 @@ class grad_Xiao:
             return 0.184*self.calc_N_Re_film(v_s_g, v_s_l, self.h_f_d)**(-0.2)
      
     def calc_f_factor_gas_bubble(self,v_s_g, v_s_l):     # Расчет гидравлического коэффициента потерь на трение для пузырька Тейлора
-        if self.calc_N_Re_gas_bubble(self,v_s_g, v_s_l, self.h_f_d)<2000:
+        if self.calc_N_Re_gas_bubble(self.v_s_g, self.v_s_l, self.h_f_d)<2000:
         # режим ламинарный
-            return 64*self.calc_N_Re_gas_bubble(self,v_s_g, v_s_l, self.h_f_d)**(-1)
+            return 64*self.calc_N_Re_gas_bubble(self.v_s_g, self.v_s_l, self.h_f_d)**(-1)
         else:
             # режим турбулентный
-            return 0.184*self.calc_N_Re_gas_bubble(self,v_s_g, v_s_l, self.h_f_d)**(-0.2)
+            return 0.184*self.calc_N_Re_gas_bubble(self.v_s_g, self.v_s_l, self.h_f_d)**(-0.2)
             
     #Shear Stress
     def calc_tau_w_film(self,v_s_g, v_s_l):      #Liquid Wall Shear Stress for film in Taylor Bubble Region
@@ -739,7 +739,7 @@ class grad_Xiao:
             self.h_f_d= self.h_f_d+0.0001 
         return res
     
-    def calc_H_L_T_B_fact(self,h_f_d):
+    def calc_H_L_T_B_fact(self,v_s_g, v_s_l):
         if self.h_f_d>=1:
             return 0.999
         elif self.h_f_d<=0:
@@ -774,7 +774,7 @@ class grad_Xiao:
         H_L_dispers = self.calc_H_L_dispers(v_s_g, v_s_l)
         H_L_strat = self.calc_H_L_strat(self.dim_h_l)
         H_L_S_U = self.calc_H_L_S_U(v_s_g, v_s_l)
-        H_L_T_B = self.calc_H_L_T_B_fact(v_s_g, v_s_l)
+        H_L_T_B = self.calc_H_L_T_B_fact(self.v_s_g, self.v_s_l)
         d = [H_L_T_B,H_L_S_U,H_L_L_S]
         if flow_structure == 1:
             return H_L_total_an
@@ -814,7 +814,7 @@ class grad_Xiao:
     
     def calc_L_U(self,v_s_g, v_s_l, d_pipe):         #Slug Unit Length
         H_L_L_S = self.calc_H_L_L_S(v_s_g, v_s_l)
-        H_L_T_B = self.calc_H_L_T_B_fact(self.h_f_d)
+        H_L_T_B = self.calc_H_L_T_B_fact(v_s_g, v_s_l)
         v_L_T_B = self.calc_v_L_T_B(v_s_g, v_s_l)
         v_L_L_S = self.calc_v_L_L_S(v_s_g, v_s_l)
         L_S = self.calc_L_S(d_pipe)
@@ -854,7 +854,7 @@ class grad_Xiao:
         S_f = self.calc_S_f(self.h_f_d)
         S_g = self.calc_S_g(self.h_f_d)
         Area_pipe = self.calc_Area_pipe(d_pipe)
-        H_L_T_B = self.calc_H_L_T_B_fact(self,v_s_g, v_s_l)
+        H_L_T_B = self.calc_H_L_T_B_fact(v_s_g, v_s_l)
         rho_f = self.rho_l_PT*H_L_T_B + self.rho_g_PT*(1-H_L_T_B) 
         a = L_f/L_U
         b = rho_f*self.gravity*math.sin((math.pi*self.angle/180))
