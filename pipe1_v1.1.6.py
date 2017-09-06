@@ -137,14 +137,6 @@ class grad_Xiao:
      
     # Расчет вспомогательных параметров для определения безрамерной высоты жидкости - Calculate Dimensionless Liquid Height
     
-    def calc_dim_h_l_fact(self,dim_h_l):
-        if dim_h_l>=1:
-            return 0.9999
-        elif dim_h_l<=0:
-            return 0.0001
-        else:
-            return dim_h_l
-    
     def calc_dim_A_l(self,dim_h_l):
         dim_h_l=self.calc_dim_h_l_fact(dim_h_l)
         b=2*dim_h_l-1
@@ -218,9 +210,8 @@ class grad_Xiao:
     def calc_y_large(self,rho_l_PT,rho_g_PT,v_s_g,d_pipe,mu_g_PT,gravity,angle):      # to introduce effect of inclination angle on the height of the stratified liquid layer
         pres_drop_s_g=self.calc_pres_drop_s_g(rho_g_PT,v_s_g,d_pipe,mu_g_PT)
         return (rho_l_PT-rho_g_PT)*gravity*math.sin(math.pi*angle/180)/(-pres_drop_s_g)
-     
+    
     def calc_uniq_func_dim_height(self,dim_h_l):
-        dim_h_l=self.calc_dim_h_l_fact(dim_h_l)
         a1=self.calc_x_large(self.rho_l_PT,self.rho_g_PT,self.v_s_l,self.v_s_g,self.d_pipe,self.mu_l_PT,self.mu_g_PT)
         a2=self.calc_y_large(self.rho_l_PT,self.rho_g_PT,self.v_s_g,self.d_pipe,self.mu_g_PT,self.gravity,self.angle)
         b1=self.calc_dim_A_l(dim_h_l)
@@ -243,8 +234,16 @@ class grad_Xiao:
         g11=f11**(-f2)
         h11=d2*d2
         i11=c3/b2+c2/b1+c2/b2
-        return  a11*c11*d11*e11-g11*h11*i11+4*a2
+        res = a11*c11*d11*e11-g11*h11*i11+4*a2
+        return  res
      
+    def calc_dim_h_l_fact(self,dim_h_l):
+        if dim_h_l>=1:
+            return 0.9999
+        elif dim_h_l<=0:
+            return 0.0001
+        else:
+            return dim_h_l
      
     #определение струтуры потока
      
@@ -326,13 +325,7 @@ class grad_Xiao:
             return stratified_regime
         else:
             return nonstratified_regime
-     
-    
 
-     
-    #for xx in t :
-    #    yy.append(calc_uniq_func_dim_height(xx))
-    #plt.plot(t,yy)   
      
     #print("dim_h_l = ",dim_h_l)
         
@@ -763,10 +756,8 @@ class grad_Xiao:
     #Определение Liquid Holdup в замисимости от структуры потока
     def calc_regime_liquid_holdup(self,v_s_g, v_s_l, rho_g_PT):
         
-#        ff = self.calc_uniq_func_dim_height
         self.dim_h_l = fsolve(self.calc_uniq_func_dim_height, 0.001)
 
-        
         flow_structure = self.calc_flow_structure(self.dim_h_l)
         H_L_L_S = self.calc_H_L_L_S(v_s_g, v_s_l)
         H_L_total_an = self.calc_H_L_gas_core(v_s_g, v_s_l)     #Без учета холдапа в пленке в аннулар режиме
@@ -786,6 +777,10 @@ class grad_Xiao:
             return H_L_dispers
         else:
             return d
+    
+    def calc_dog(self):
+        self.dim_h_l = fsolve(self.calc_uniq_func_dim_height, 0.001)
+        return self.dim_h_l
     
 #    h_f_d = 0.01
 #    while (self.combined_momentum_eq_film_reg(v_s_g, v_s_l, h_f_d)>0):
@@ -1104,17 +1099,20 @@ class grad_Xiao:
 grX = grad_Xiao()
 
 dP = 0.8
+vl = 1
+vg = 55
 print ("L_S = ", grX.calc_L_S(dP))
 print ("L_S_max = ", grX.calc_L_S_max(dP))
-a = grX.combined_momentum_eq_film_reg(10,1)
-b= grX.calc_regime_liquid_holdup(10,1,1)
-print ("L_U = ", grX.calc_L_U(10,1,0.8))
-print (grX.calc_pressure_drop_slug_reg(10, 1, 0.8))
-print (grX.calc_pressure_drop_film_reg(10, 1, 0.8))
-print (grX.combined_momentum_eq_film_reg(10, 1))
-print (grX.calc_H_L_T_B_fact(10, 1))
-print (grX.calc_pressure_drop_S_U(10, 1, 0.8))
-print (grX.pressure_drop(10, 1, 0.8))
+a = grX.combined_momentum_eq_film_reg(vg,vl)
+b= grX.calc_regime_liquid_holdup(vg,vl,10)
+print ("L_U = ", grX.calc_L_U(vg,vl,0.8))
+print (grX.calc_pressure_drop_slug_reg(vg,vl, 0.8))
+print (grX.calc_pressure_drop_film_reg(vg,vl, 0.8))
+print (grX.combined_momentum_eq_film_reg(vg,vl))
+print (grX.calc_H_L_T_B_fact(vg,vl))
+print (grX.calc_pressure_drop_S_U(vg,vl, 0.8))
+print (grX.pressure_drop(vg,vl, 0.8))
+print (grX.calc_dog())
 
 """
 print (grX.calc_Freq_S(v_s_g, v_s_l, d_pipe))
@@ -1131,15 +1129,13 @@ dim_h_l = fsolve(calc_uniq_func_dim_height, 0.001)
 
 vsl=0.5
 d=0.3
-
+"""
 #print (h_f_d)
-t=np.arange(0.1, 10, 0.01)
+t=np.arange(0.2, 0.8, 0.01)
 yy=[]
  
-for vsg in t :
-    yy.append(self.pressure_drop(vsg, vsl, d, angle=90))
+for xx in t :
+    yy.append(grX.calc_uniq_func_dim_height(xx))
 plt.plot(t,yy) 
 plt.grid(True)
 
-
-"""
