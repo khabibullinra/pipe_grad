@@ -33,100 +33,112 @@ rough = 0.0001   # абсолютная шероховатость трубы, �
 gravity = 9.81  #ускорение свободного падения, м/с2
 sigma_l = 0.03 #поверхностное натяжение на границе жидкости и газа, Н/м
 
-""" 
+"""
 
 
-class GradXiao:
+class Grad:
+    def __init__(self):
+        # Исходные данные для проведения расчета
+        self.v_s_l = 0.2          # приведенная скорость жидкости, м3/с
+        self.v_s_g = 10           # приведенная скорость газа, м3/с
+        self.P_pipe = 40          # давление в трубе, МПа
+        self.T_pipe = 350         # температура на устье скважины, К
+        self.L_pipe = 2000        # длина трубы, м
+        self.d_pipe = 0.8         # диаметр трубы, м
+        self.rho_l_PT = 1000      # плотность жидкости при термобарических условиях, кг/м3
+        self.rho_g_PT = 20        # плотность газа при термобарических условиях, кг/м3
+        self.mu_l_PT = 0.001      # вязкость жидкости при термобарических условиях, Па*с
+        self.mu_g_PT = 0.00002    # вязкость газа при термобарических условиях, Па*с
+        self.angle = 0            # угол наклона трубы, градус
+        self.rough = 0.0001       # абсолютная шероховатость трубы, м
+        self.gravity = 9.81       # ускорение свободного падения, м/с2
+        self.sigma_l = 0.03       # поверхностное натяжение на границе жидкости и газа, Н/м
+
+    @property
+    def v_s_mix(self):
+        return self.v_s_g + self.v_s_l
+
+    @property
+    def n_re_liq(self):
+        return self.rho_l_PT * self.d_pipe * self.v_s_l / self.mu_l_PT
+
+    @property
+    def n_re_gas(self):
+        return self.rho_l_PT * self.d_pipe * self.v_s_g / self.mu_g_PT
+
+    @property
+    def n_re_mix_slug(self):
+        return self.v_s_mix * self.rho_l_PT * self.d_pipe / self.mu_l_PT
+
+class GradXiao(Grad):
 
     # Расчет предварительных величин
     def __init__(self):
         """
         конструктор класса, задает исходные значения 
         """
-        # Исходные данные для проведения расчета
-        self.v_s_l = 0.2          # приведенная скорость жидкости, м3/с
-        self.v_s_g = 10           # приведенная скорость газа, м3/с
-        self.P_pipe = 40            # давление в трубе, МПа
-        self.T_pipe = 350          # температура на устье скважины, К
-        self.L_pipe = 2000          # длина трубы, м
-        self.d_pipe = 0.8       # диаметр трубы, м
-        self.rho_l_PT = 1000      # плотность жидкости при термобарических условиях, кг/м3
-        self.rho_g_PT = 20      # плотность газа при термобарических условиях, кг/м3
-        self.mu_l_PT = 0.001    # вязкость жидкости при термобарических условиях, Па*с
-        self.mu_g_PT = 0.00002    # вязкость газа при термобарических условиях, Па*с
-        self.angle = 0          # угол наклона трубы, градус
-        self.rough = 0.0001     # абсолютная шероховатость трубы, м
-        self.gravity = 9.81     # ускорение свободного падения, м/с2
-        self.sigma_l = 0.03     # поверхностное натяжение на границе жидкости и газа, Н/м
-
-    def calc_f_factor_l(self):     # Расчет гидравлического коэффициента потерь на трение для жидкости
-        if self.N_Re_l < 2000:
-            """
-            режим ламинарный
-            """
-            return 64*self.N_Re_l**(-1)
-        else:
-            """
-            режим турбулентный
-            """
-            return 0.184*self.N_Re_l**(-0.2)
-     
-    def calc_f_factor_g(self):     # Расчет гидравлического коэффициента потерь на трение для жидкости
-        if self.N_Re_g<2000:
-            # режим ламинарный
-            return 64*self.N_Re_g**(-1)
-        else:
-            # режим турбулентный
-            return 0.184*self.N_Re_g**(-0.2)
-        
-    def calc_auxiliary_init_vars(self):  # расчет вспомогательных переменных
-        self.Area_pipe_m =  math.pi*self.d_pipe**2/4  # диаметр трубы
-        self.d_pipe_inch = self.d_pipe/0.0254
-        # расчет длины слага, зависит только от диаметра
-        a = math.log(self.d_pipe_inch) 
-        b = -25.4 + 28.5*a**0.1
-        self.L_S_feet = math.exp(b)
-        self.L_S = self.L_S_feet * 0.3048         
-        # расчет максимальной длины слага 
-        b = math.log(self.L_S_feet)
-        c = 0.5*3.08 + b
-        self.L_S_feet_max = math.exp(c) 
-        self.L_S_max = self.L_S_feet_max * 0.3048         
-        self.v_s_mix = self.v_s_g + self.v_s_l
-        # найдем число Рейнольдса для жидкости для заданных условий
-        self.N_Re_l = self.rho_l_PT * self.d_pipe*self.v_s_l / self.mu_l_PT
-        self.N_Re_g = self.rho_g_PT * self.d_pipe * self.v_s_g / self.mu_g_PT
-        self.N_Re_mix_slug = self.v_s_mix * self.rho_l_PT * self.d_pipe / self.mu_l_PT
+        super().__init__()
+        """ переменные вычисляемые в ходе расчетов """
+        self.area_pipe_m = 0
+        self.l_s = 0
+        self.l_s_max = 0
         self.N_Re_mix_slug_crit = 1000
-        self.c_o = 2.27/(1+(self.N_Re_mix_slug / self.N_Re_mix_slug_crit)**2) + 1.2 / (1+(self.N_Re_mix_slug_crit / self.N_Re_mix_slug)**2)
-        aa = (self.gravity*self.d_pipe)**0.5
-        self.v_d_TB = 0.54 * aa * math.cos(math.pi * self.angle/180) + 0.35 * aa ** 0.5 * math.sin(math.pi * self.angle / 180)
-        self.v_T_B = self.c_o * self.v_s_mix + self.v_d_TB
+        self.v_t_b = 0
+
+
+
+    def calc_auxiliary_init_vars(self):  # расчет вспомогательных переменных
+        self.area_pipe_m = math.pi * self.d_pipe ** 2 / 4  # диаметр трубы
+        d_pipe_inch = self.d_pipe/0.0254
+        # расчет длины слага, зависит только от диаметра
+        a = math.log(d_pipe_inch) 
+        b = -25.4 + 28.5*a**0.1
+        l_s_feet = math.exp(b)
+        self.l_s = l_s_feet * 0.3048
+        # расчет максимальной длины слага 
+        b = math.log(l_s_feet)
+        c = 0.5*3.08 + b
+        l_s_feet_max = math.exp(c)
+        self.l_s_max = l_s_feet_max * 0.3048
+        # self.v_s_mix = self.v_s_g + self.v_s_l
+        # найдем число Рейнольдса для жидкости для заданных условий
+        # self.n_re_liq = self.rho_l_PT * self.d_pipe * self.v_s_l / self.mu_l_PT
+        # self.n_re_gas = self.rho_g_PT * self.d_pipe * self.v_s_g / self.mu_g_PT
+        c_o = 2.27/(1 + (self.n_re_mix_slug / self.N_Re_mix_slug_crit) ** 2)   \
+                    + 1.2 / (1 + (self.N_Re_mix_slug_crit / self.n_re_mix_slug) ** 2)
+        aa = (self.gravity * self.d_pipe)**0.5
+        v_d_tb = 0.54 * aa * math.cos(math.pi * self.angle / 180) \
+                 + 0.35 * aa ** 0.5 * math.sin(math.pi * self.angle / 180)
+        self.v_t_b = c_o * self.v_s_mix + v_d_tb
         self.H_L_L_S = 1/(1+(self.v_s_mix/8.66)**1.39)
         self.H_L_dispers = self.v_s_l / (self.v_s_l + self.v_s_g)
-        c = (self.gravity*self.sigma_l*(self.rho_l_PT-self.rho_g_PT)/self.rho_l_PT**2)**0.25
-        self.v_g_L_S = self.v_s_mix + 1.53 * c * self.H_L_L_S**0.1 * math.sin(math.pi * self.angle / 180)
+        c = (self.gravity*self.sigma_l*(self.rho_l_PT-self.rho_g_PT)
+             / self.rho_l_PT**2)**0.25
+        self.v_g_L_S = self.v_s_mix + 1.53 * c * self.H_L_L_S**0.1   \
+                                    * math.sin(math.pi * self.angle / 180)
         self.v_L_L_S = (self.v_s_l + self.v_s_g - self.v_g_L_S * (1 - self.H_L_L_S)) / self.H_L_L_S
-        self.H_L_S_U = (self.v_T_B*self.H_L_L_S + self.v_g_L_S * (1-self.H_L_L_S) - self.v_s_g) / self.v_T_B
+        self.H_L_S_U = (self.v_t_b * self.H_L_L_S + self.v_g_L_S * (1 - self.H_L_L_S) - self.v_s_g) / self.v_t_b
 
-        if self.N_Re_l<2000:
+        if self.n_re_liq<2000:
             self.n_power_coeff = 1
+            self.f_factor_l = 64* self.n_re_liq ** (-1)
         else:
             self.n_power_coeff = 0.2       
-
-        if self.N_Re_g<2000:
+            self.f_factor_l = 0.184* self.n_re_liq ** (-0.2)
+            
+        if self.n_re_gas<2000:
             self.m_power_coeff = 1
+            self.f_factor_g = 64* self.n_re_gas ** (-1)
         else:
             self.m_power_coeff = 0.2    
-
-        self.f_factor_l = self.calc_f_factor_l()
-        self.f_factor_g = self.calc_f_factor_g()
+            self.f_factor_g = 0.184* self.n_re_gas ** (-0.2)
+        
         self.pres_drop_s_l = - self.f_factor_l * self.rho_l_PT * self.v_s_l**2 / (2 * self.d_pipe)
         self.pres_drop_s_g = - self.f_factor_g * self.rho_g_PT * self.v_s_g**2 / (2 * self.d_pipe)
         self.x_large = ((-self.pres_drop_s_l)/(-self.pres_drop_s_g))**0.5
         self.y_large = (self.rho_l_PT-self.rho_g_PT)*self.gravity*math.sin(math.pi*self.angle/180)/(-self.pres_drop_s_g)        
         self.f_large = (self.rho_g_PT / (self.rho_l_PT - self.rho_g_PT))**0.5 * self.v_s_g/(self.d_pipe * self.gravity * math.cos(math.pi * self.angle/180))**0.5
-        self.k_large = self.N_Re_l**0.5*self.f_large
+        self.k_large = self.n_re_liq ** 0.5 * self.f_large
         self.t_large = (-self.pres_drop_s_l/((self.rho_l_PT-self.rho_g_PT)*self.gravity*math.cos(math.pi*self.angle/180)))**0.5
         #Slug Liquid Holdup in Slug Region (fig 4.14)
         return
@@ -142,7 +154,7 @@ class GradXiao:
         self.H_L_T_B = 0.5 + (4 / math.pi) * (self.h_f_d - 0.5) * (self.h_f_d - self.h_f_d ** 2) ** 0.5 + (
                                                                          1 / math.pi) * math.asin(2 * self.h_f_d - 1)
         # Actual film velocity in Taylor Bubble Region
-        self.v_L_T_B = self.v_T_B - (self.v_T_B - self.v_L_L_S) * self.H_L_L_S / self.H_L_T_B
+        self.v_L_T_B = self.v_t_b - (self.v_t_b - self.v_L_L_S) * self.H_L_L_S / self.H_L_T_B
         # Actual Taylor Bubble velocity in Taylor Bubble Region
         self.v_g_T_B = (self.v_s_mix - self.v_L_T_B * self.H_L_T_B) / (1 - self.H_L_T_B)
         # Геометрические параметры в для региона Тейлор бабл
@@ -151,58 +163,35 @@ class GradXiao:
         self.S_g = math.pi * self.d_pipe - self.S_f
         b = 2 * self.h_f_d - 1
         self.S_i = self.d_pipe * (1 - b * b) ** 0.5
-        self.Area_film = self.H_L_T_B * self.Area_pipe_m
-        self.Area_gas = (1 - self.H_L_T_B) * self.Area_pipe_m
+        self.Area_film = self.H_L_T_B * self.area_pipe_m
+        self.Area_gas = (1 - self.H_L_T_B) * self.area_pipe_m
         self.d_hydr_film = 4 * self.Area_film / self.S_f # расчет гидравлического диаметра для пленки
         self.d_hydr_gas_bubble = 4 * self.Area_gas / (self.S_g + self.S_i)# расчет гидравлического диаметра для пузырька Тейлора
         self.N_Re_film = self.rho_l_PT * self.d_hydr_film * math.fabs(self.v_L_T_B) / self.mu_l_PT# Расчет числа Рейнольдса для пленки
         self.N_Re_gas_bubble = self.rho_g_PT * self.d_hydr_gas_bubble * math.fabs(self.v_g_T_B) / self.mu_g_PT# Расчет числа Рейнольдса для пузырька Тейлора
         if self.N_Re_film < 2000:# Расчет гидравлического коэффициента потерь на трение для пленки
-            # режим ламинарный
-            self.f_factor_film = 64 * self.N_Re_film ** (-1)
+            self.f_factor_film = 64 * self.N_Re_film ** (-1) # режим ламинарный
         else:
-            # режим турбулентный
-            self.f_factor_film =  0.184 * self.N_Re_film ** (-0.2)
+            self.f_factor_film =  0.184 * self.N_Re_film ** (-0.2) # режим турбулентный
         #Расчет гидравлического коэффициента потерь на трение для пузырька Тейлора
         if self.N_Re_gas_bubble < 2000:
-            # режим ламинарный
-            self.f_factor_gas_bubble = 64 * self.N_Re_gas_bubble ** (-1)
+            self.f_factor_gas_bubble = 64 * self.N_Re_gas_bubble ** (-1)# режим ламинарный
         else:
-            # режим турбулентный
-            self.f_factor_gas_bubble =  0.184 * self.N_Re_gas_bubble ** (-0.2)
+            self.f_factor_gas_bubble =  0.184 * self.N_Re_gas_bubble ** (-0.2) # режим турбулентный
         # Shear Stress
         # Liquid Wall Shear Stress for film in Taylor Bubble Region
         self.tau_w_film = self.f_factor_film * self.rho_l_PT * self.v_L_T_B * math.fabs(self.v_L_T_B) / 8
-        # def calc_tau_w_gas_bubble(self):
         #  Gas Wall Shear Stress for gas bubble in Taylor Bubble Region
         self.tau_w_gas_bubble = self.f_factor_gas_bubble * self.rho_g_PT * self.v_g_T_B * math.fabs(self.v_g_T_B) / 8
-        #def calc_tau_i(self, v_s_g, v_s_l):
         # Interfacial Shear Stress
         f_factor_i = 0.0568
         self.tau_i = f_factor_i * self.rho_g_PT * (self.v_g_T_B - self.v_L_T_B) * math.fabs(self.v_g_T_B - self.v_L_T_B) / 8
-
-        #def calc_L_U(self, v_s_g, v_s_l, d_pipe):  # Slug Unit Length
-        #    H_L_L_S = self.calc_H_L_L_S(v_s_g, v_s_l)
-        #    H_L_T_B = self.calc_H_L_T_B_fact(v_s_g, v_s_l)
-        #    v_L_T_B = self.calc_v_L_T_B(v_s_g, v_s_l)
-        #    v_L_L_S = self.calc_v_L_L_S(v_s_g, v_s_l)
-        #    L_S = self.L_S
-        a = self.L_S * (self.v_L_L_S * self.H_L_L_S - self.v_L_T_B * self.H_L_T_B)
+        a = self.l_s * (self.v_L_L_S * self.H_L_L_S - self.v_L_T_B * self.H_L_T_B)
         b = self.v_s_l - self.v_L_T_B * self.H_L_T_B
         self.L_U = a / b
-
-        #def calc_L_f(self, v_s_g, v_s_l, d_pipe):  # Film Length
-        #    L_S = self.L_S
-        #    L_U = self.calc_L_U(v_s_g, v_s_l, d_pipe)
-        self.L_f = self.L_U - self.L_S
-
-        #def calc_Freq_S(self, v_s_g, v_s_l, d_pipe):  # Slug Frequency
-        #    L_U = self.calc_L_U(v_s_g, v_s_l, d_pipe)
-        #    # v_T_B = self.calc_v_T_B(v_s_g, v_s_l)
-        self.Freq_S = self.v_T_B / self.L_U
-
-        #def calc_Freq_S_Zabaras(self, v_s_g, v_s_l,
-        #                        d_pipe):  # Empirical correlation for Slug Frequency by Zabaras (2000)
+        self.L_f = self.L_U - self.l_s
+        self.Freq_S = self.v_t_b / self.L_U
+        # Empirical correlation for Slug Frequency by Zabaras (2000)
         v_s_l_feet = self.v_s_l / 0.3048
         gravity_feet = 32.2
         d_pipe_feet = self.d_pipe / 0.3048
@@ -212,7 +201,6 @@ class GradXiao:
         c = math.sin((math.pi * self.angle / 180))
         d = 0.836 + 2.75 * c ** 0.25
         self.S_Zabaras = 0.0226 * a * b * d
-
         return
 
     def calc_dim_h_l_fact(self, dim_h_l):
@@ -269,7 +257,6 @@ class GradXiao:
         # Stratified flow
         self.H_L_strat = 0.5 + (4 / math.pi) * (self.dim_h_l - 0.5) * (self.dim_h_l - self.dim_h_l ** 2) ** 0.5 + (1
                                                                    / math.pi) * math.asin(2 * self.dim_h_l - 1)
-
         return  self.flow_structure
 
     def calc_auxiliary_pres_drop(self):
@@ -309,34 +296,29 @@ class GradXiao:
         self.S_L_Str = self.d_pipe*(math.pi - math.acos(b))
         self.S_g_Str = math.pi*self.d_pipe - self.S_L_Str
         self.S_i_Str = self.d_pipe*(1-b*b)**0.5
-        self.Area_liquid_Str = self.H_L_strat*self.Area_pipe_m
-        self.Area_gas_Str = (1-self.H_L_strat)*self.Area_pipe_m
+        self.Area_liquid_Str = self.H_L_strat*self.area_pipe_m
+        self.Area_gas_Str = (1-self.H_L_strat)*self.area_pipe_m
         self.d_hydr_liq = 4*self.Area_liquid_Str/self.S_L_Str         #ПРОВЕРИТЬ! расчет гидравлического диаметра для слоя жидкости
         self.d_hydr_gas = 4*self.Area_gas/(self.S_g_Str + self.S_i_Str) #ПРОВЕРИТЬ #расчет гидравлического диаметра для слоя газа
-    
         self.v_L_Str = self.v_s_l/self.H_L_strat       #Actual liquid velocity
         self.v_g_Str = self.v_s_g/(1-self.H_L_strat)   ##Actual gas velocity
-    
         self.N_Re_gas_Str = self.v_g_Str*self.d_hydr_gas*self.rho_g_PT/self.mu_g_PT
         self.N_Re_liquid_Str = self.v_L_Str*self.d_hydr_liq*self.rho_l_PT/self.mu_l_PT
-
-             # Расчет гидравлического коэффициента потерь на трение для жидкости
+        # Расчет гидравлического коэффициента потерь на трение для жидкости
         if self.N_Re_liquid_Str<2000:
         # режим ламинарный
             self.f_factor_l_str = 64*self.N_Re_liquid_Str**(-1)
         else:
             # режим турбулентный
             self.f_factor_l_str = 0.184*self.N_Re_liquid_Str**(-0.2)
-    
-            # Расчет гидравлического коэффициента потерь на трение для газа
+        # Расчет гидравлического коэффициента потерь на трение для газа
         if self.N_Re_gas_Str<2000:
         # режим ламинарный
             self.f_factor_g_str = 64*self.N_Re_gas_Str**(-1)
         else:
             # режим турбулентный
             self.f_factor_g_str = 0.184*self.N_Re_gas_Str**(-0.2)
- 
-    # Расчет гидравлического коэффициента потерь на трение между жидкостью и газом
+        # Расчет гидравлического коэффициента потерь на трение между жидкостью и газом
         aa = self.flow_structure
         cc = 0.0568
         if aa == 2:
@@ -507,11 +489,11 @@ class GradXiao:
         #Intermittent Flow (Slug Regime)
         a1 = self.L_f/self.L_U
         b1 = self.rho_f*self.gravity*math.sin((math.pi*self.angle/180))
-        c1 = (self.tau_w_film*self.S_f + self.tau_w_gas_bubble*self.S_g)/self.Area_pipe_m
+        c1 = (self.tau_w_film*self.S_f + self.tau_w_gas_bubble*self.S_g)/self.area_pipe_m
         d1 = a1*(c1 + b1)
         self.pressure_drop_film_reg = -d1      #Pressure Drop in Film Region
         
-        a2 = self.L_S/self.L_U
+        a2 = self.l_s / self.L_U
         b2 = self.tau_Slug*4/self.d_pipe
         c2 = self.rho_slug_PT*self.gravity*math.sin((math.pi*self.angle/180))
         d2 = a2*(b2 + c2)
@@ -571,8 +553,8 @@ class GradXiao:
 grX = GradXiao()
 grX.calc_auxiliary_init_vars()
 
-print ("L_S = ", grX.L_S)
-print ("L_S_max = ", grX.L_S_max)
+print ("l_s = ", grX.l_s)
+print ("l_s_max = ", grX.l_s_max)
 #b= grX.calc_uniq_func_dim_height(0.01)
 d= grX.calc_regime_liquid_holdup()
 
