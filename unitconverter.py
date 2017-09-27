@@ -2,26 +2,28 @@
 описание констант и методов конвертации единиц измерения
 """
 import scipy.constants as const
+import numbers
 
 g = const.g   # gravity
 pi = const.pi
 
-class AbstractUnit():
+
+class AbstractUnit:
     """
     Абстрактный класс для определения свойств размерной единицы измерения
     Не надо создавать объекты этого класса в явнов виде
     для опредения разрмерности надо задать словать _unit с названиями размерностей и переводных коэффциентов
     """
     def __init__(self, val):
+        self._unit = {}
         self._value = val
-#        self._unit = {}
        
     def __getitem__(self, key):
         # если значение или тип ключа некорректны, list выбросит исключение
         return  self._value / self._unit[key]
         
     def __getattr__(self, name):
-        return  self._value /  self._unit[name] 
+        return self._value / self._unit[name]
     
     def __str__(self):
         return str(self._value) + ' atm'
@@ -30,43 +32,69 @@ class AbstractUnit():
         self._value = item * self._unit[key] 
         
     def __setattr__(self, key, item):
-        if key in _unit:
-            print("device test")
-#        else:
-#            super(MyTest, self).__setattr__(name, value)
-            # in python3+ you can omit the arguments to super:
-            #super().__setattr__(name, value)
+        if key == '_unit':
+            super().__setattr__(key,item)
+        if key in self._unit:
+            self._value = item * self._unit[key]
+        else:
+            super().__setattr__(key, item)
+
+    def __add__(self, other):
+        if isinstance(other, numbers.Number):
+            res = self._value + float(other)
+        elif isinstance(other, self.__class__):
+            res = self._value + other._value
+        else:
+            raise ValueError()
+        return self.__class__(res)
+
+    def __mul__(self, other):
+        if isinstance(other, numbers.Number):
+            res = self._value * float(other)
+        elif isinstance(other, self.__class__):
+            res = self._value * other._value
+        else:
+            raise ValueError()
+        return self.__class__(res)
+
+    def __sub__(self, other):
+        if isinstance(other, numbers.Number):
+            res = self._value - float(other)
+        elif isinstance(other, self.__class__):
+            res = self._value - other._value
+        else:
+            raise ValueError()
+        return self.__class__(res)
+
+    def __truediv__(self, other):
+        if isinstance(other, numbers.Number):
+            res = self._value / float(other)
+        elif isinstance(other, self.__class__):
+            res = self._value / other._value
+        else:
+            raise ValueError()
+        return self.__class__(res)
+
 
 class Pressure(AbstractUnit):
-    
     def __init__(self, val):
         super().__init__(val)
-        self._unit = {'Pa':1/const.bar, 'psi':const.psi/const.bar, 'bar':1, 'atm': const.atm/const.bar, 'MPa':1000000/const.bar}
+        self._unit = {'Pa': 1/const.bar,
+                      'psi': const.psi/const.bar,
+                      'bar': 1,
+                      'atm': const.atm/const.bar,
+                      'MPa': 1000000/const.bar}
 
 
 class Length(AbstractUnit):
-    
     def __init__(self, val):
         super().__init__(val)
-        self._unit = {'m':1, 'ft':const.foot, 'mm':1/1000, 'inch': const.inch, 'km':1000}
+        self._unit = {'m': 1,
+                      'ft': const.foot,
+                      'mm': 1/1000,
+                      'inch': const.inch,
+                      'km': 1000}
 
-    
-#    @property
-#    def atm(self):
-#        return self
-    
-#    @atm.setter
-#    def atm(self, value):
-#        return float.__new__(Pressure, value)
-    
-#    @property
-#    def psi(self):
-#        return  bar2psi(self._val)
-    
-#    @psi.setter
-#    def psi(self,value):
-#        self._val = psi2bar(value)
-    
 
 def psi2pa(value=1):
     return value * const.psi
@@ -74,6 +102,7 @@ def psi2pa(value=1):
 
 def bar2psi(value=1):
     return value * const.bar / const.psi
+
 
 def psi2bar(value=1):
     return value / const.bar * const.psi
@@ -109,3 +138,6 @@ def bbl2m3(value=1):
 
 def m3m3_to_m3t(value, Gamma=1):
     pass
+
+
+print("done")
