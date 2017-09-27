@@ -579,6 +579,19 @@ print("dP =", grX.calc_pressure_drop_total())
 print("dP_liq_str =", grX.pressure_drop_liquid_str)
 print("dp_gas_str =", grX.pressure_drop_gas_str)
 
+vg_range = range(1,10,1)
+vl_range = range(1,10,1)
+print('start')
+for vg in vg_range:
+    for vl in vl_range:
+        grX.v_s_g = vg
+        grX.v_s_l = vl/10
+        print(vg,vl/10)
+        #grX.calc_auxiliary_dimhl_vars()
+        grX.calc_auxiliary_init_vars()
+        print(grX.calc_regime_liquid_holdup())
+        print(grX.flow_structure)
+
 """
 a = grX.combined_momentum_eq_film_reg()
 b= grX.calc_regime_liquid_holdup()
