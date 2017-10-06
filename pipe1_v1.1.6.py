@@ -16,6 +16,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import fsolve
 import unitconverter as un
+import seaborn as sns
+
 
 """
 Расчет градиента давления многофазного потока в горизонтальной трубе по коррреляции Xiao
@@ -50,7 +52,7 @@ class Grad:
         self.T_pipe = 350  # температура на устье скважины, К
         self.L_pipe = 2000  # длина трубы, м
         self.d_pipe = 0.8  # диаметр трубы, м
-        self.rho_l_PT = 1000  # плотность жидкости при термобарических условиях, кг/м3
+        self.rho_l_PT = 600  # плотность жидкости при термобарических условиях, кг/м3
         self.rho_g_PT = 20  # плотность газа при термобарических условиях, кг/м3
         self.mu_l_PT = 0.001  # вязкость жидкости при термобарических условиях, Па*с
         self.mu_g_PT = 0.00002  # вязкость газа при термобарических условиях, Па*с
@@ -277,6 +279,7 @@ class GradXiao(Grad):
             2 * self.dim_h_l - 1)
         return self.flow_structure
 
+
     def calc_auxiliary_pres_drop(self):
         # Slug Flow
         H_L_T_B = self.calc_H_L_T_B_fact()
@@ -459,7 +462,7 @@ class GradXiao(Grad):
             d1 = (self.rho_l_PT - self.rho_g_PT) * un.g * math.sin(math.pi * self.angle / 180)
             # return b1
             res = a1 - b1 + c1 - d1
-            self.h_f_d = self.h_f_d + 0.00001
+            self.h_f_d = self.h_f_d + 0.0001
         return res
 
     def calc_H_L_T_B_fact(self):
@@ -583,10 +586,12 @@ print("dP =", grX.calc_pressure_drop_total())
 print("dP_liq_str =", grX.pressure_drop_liquid_str)
 print("dp_gas_str =", grX.pressure_drop_gas_str)
 
-vg_range = np.arange(0.01,20.1,4)
-vl_range = np.arange(0.01,1.1,0.2)
+vg_range = np.arange(0.01,20.1,0.1)
+vl_range = np.arange(0.01,2.011,0.01)
 xr = np.zeros((vg_range.size, vl_range.size))
 print (vg_range.size, vl_range.size)
+
+
 
 with open("out.txt","w") as out:
     i=0
@@ -609,73 +614,47 @@ with open("out.txt","w") as out:
             print('\n i=',i, 'j=',j, '\n',grX.v_s_g, grX.v_s_l, grX.calc_auxiliary_dimhl_vars(), grX.calc_regime_liquid_holdup())
             xr[i,j] = xr1
             j=j+1
-        i=i+1
+        i += 1
+
+print (xr)
+xr = xr.transpose()
+print (xr)
 
 
 
+def discrete_cmap(N, base_cmap=None):
+    # Note that if base_cmap is a string or None, you can simply do
+    # return plt.cm.get_cmap(base_cmap, N)
+    # The following works for string, None, or a colormap instance:
+    base = plt.cm.get_cmap(base_cmap)
+    color_list = base(np.linspace(0, 1, N))
+    cmap_name = base.name + str(N)
+    return base.from_list(cmap_name, color_list, N)
 
-plt.pcolormesh(vg_range, vl_range, xr)
-plt.xscale('linear') #'linear'  'symlog'  'logit'  'log'
+N = 4 # Количество цветов
+#plt.axis([0.1, 20.1, 0.1, 1])
+plt.pcolormesh(vg_range, vl_range, xr, cmap=discrete_cmap(N, 'rainbow'))
+plt.xscale('linear') #'linear'  'symlog'  'logit'  'log' , cmap=discrete_cmap(N, 'rainbow')
 plt.yscale('linear')
+
+plt.colorbar(ticks=np.min(xr)+range(N))
+plt.clim(np.min(xr)-0.5, np.min(xr)+N - 0.5)
+
 plt.show()
 
-"""
-vg_arr = np.arange(0.01,10.1,1)
-vl_arr = np.arange(0.01,10.1,1)
-xr = np.zeros([vl_arr.size, vg_arr.size])
 
 
-for vg in vg_arr:
-    grX.v_s_g = vg
-    i=0
-    for vl in vl_arr:
-        grX.v_s_l = vl
-        j=0
-        xr1 = grX.calc_auxiliary_dimhl_vars()
-        #grX.calc_auxiliary_dimhl_vars()
-        #        print(grX.calc_regime_liquid_holdup())
-        grX.calc_regime_liquid_holdup()
-        print(grX.calc_regime_liquid_holdup())
-        xr[i,j]=xr1
-        j=j+1
-    i=i+1
-"""    
 
 
-"""
-a = grX.combined_momentum_eq_film_reg()
-b= grX.calc_regime_liquid_holdup()
-print ("L_U = ", grX.calc_L_U(vg,vl,0.8))
-print (grX.calc_pressure_drop_slug_reg(vg,vl, 0.8))
-print (grX.calc_pressure_drop_film_reg(vg,vl, 0.8))
-print (grX.combined_momentum_eq_film_reg())
-print (grX.calc_H_L_T_B_fact(vg,vl))
-print (grX.calc_pressure_drop_S_U(vg,vl, 0.8))
-print (grX.pressure_drop(vg,vl, 0.8))
 
-
-print (grX.calc_Freq_S(v_s_g, v_s_l, d_pipe))
-print (grX.calc_Freq_S_Zabaras(v_s_g, v_s_l, d_pipe))
-print (grX.calc_flow_structure(dim_h_l))
-print (grX.calc_pressure_drop_S_U(v_s_g, v_s_l, d_pipe))
-print (grX.pressure_drop(1, 1, 0.4))
-
-t=np.arange(0.15, 0.95, 0.001)
-yy=[]
-
-dim_h_l = fsolve(calc_uniq_func_dim_height, 0.001)
-
-
-vsl=0.5
-d=0.3
-"""
 # print (h_f_d)
+
 """
-t=np.arange(0.2, 0.9, 0.01)
+t=np.arange(0.01, 0.9, 0.01)
 yy=[]
  
 for xx in t :
-    yy.append(grX.calc_uniq_func_dim_height(xx))
+    yy.append(grX.calc_trans_B())
 plt.plot(t,yy) 
 plt.grid(True)
 #plt.interactive(False)
